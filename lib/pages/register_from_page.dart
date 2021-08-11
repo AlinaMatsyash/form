@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:form_example/model/user.dart';
+import 'package:form_example/pages/user_ifo_page.dart';
 
 class RegisterFormPage extends StatefulWidget {
   const RegisterFormPage({Key? key}) : super(key: key);
@@ -12,6 +14,7 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
   bool _hidePass = true;
 
   final _formKey = GlobalKey<FormState>();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -19,6 +22,15 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
   final _storyController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+
+  final List<String> countryes = ['Russia', 'Ukraine', 'Germany', 'France'];
+  String _selectedCountry = 'Germany';
+
+  final _nameFocus = FocusNode();
+  final _phoneFocus = FocusNode();
+  final _passFocus = FocusNode();
+
+  User newUser = User();
 
   @override
   void dispose() {
@@ -28,12 +40,22 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
     _storyController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
+    _nameFocus.dispose();
+    _phoneFocus.dispose();
+    _passFocus.dispose();
     super.dispose();
+  }
+
+  void _fieldFocusChange(
+      BuildContext context, FocusNode currentFocus, FocusNode nextFocus) {
+    currentFocus.unfocus();
+    FocusScope.of(context).requestFocus(nextFocus);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: Text('Register Form'),
         centerTitle: true,
@@ -44,34 +66,56 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
           padding: EdgeInsets.all(16.0),
           children: [
             TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Full name *',
-                  hintText: 'What do people call you?',
-                  prefixIcon: Icon(Icons.person),
-                  suffixIcon: Icon(
+              focusNode: _nameFocus,
+              autofocus: true,
+              onFieldSubmitted: (_) {
+                _fieldFocusChange(context, _nameFocus, _phoneFocus);
+              },
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'Full name *',
+                hintText: 'What do people call you?',
+                prefixIcon: Icon(Icons.person),
+                suffixIcon: GestureDetector(
+                  onTap: () {
+                    _nameController.clear();
+                  },
+                  child: Icon(
                     Icons.delete_outline,
                     color: Colors.red,
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(20.0)),
-                    borderSide: BorderSide(color: Colors.black, width: 2.0),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(20.0)),
-                    borderSide: BorderSide(color: Colors.blue, width: 2.0),
-                  ),
                 ),
-                validator: (value) {
-                  return _validateName(value);
-                }),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                  borderSide: BorderSide(color: Colors.black, width: 2.0),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                  borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                ),
+              ),
+              validator: (value) {
+                return _validateName(value);
+              },
+              onSaved: (value) => newUser.name = value!,
+            ),
+
             SizedBox(height: 10),
             TextFormField(
+              focusNode: _phoneFocus,
+              onFieldSubmitted: (_) {
+                _fieldFocusChange(context, _phoneFocus, _passFocus);
+              },
               controller: _phoneController,
               decoration: InputDecoration(
-                suffixIcon: Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
+                suffixIcon: GestureDetector(
+                  onTap: () {
+                    _phoneController.clear();
+                  },
+                  child: Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                  ),
                 ),
                 hintText: 'Where can we reach you?',
                 helperText: 'Phone format: (XXX)XXX-XXXX',
@@ -95,6 +139,7 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
               validator: (value) => _validatePhoneNumber(value!)
                   ? null
                   : 'Phone number must be entered as(###)###-####',
+              onSaved: (value) => newUser.phone = value!,
             ),
             SizedBox(height: 10),
             // Email Address
@@ -106,10 +151,34 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
                 icon: Icon(Icons.email),
               ),
               keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                return _validateEmail(value);
-              },
+              // validator: (value) {
+              //   return _validateEmail(value);
+              // },
+              onSaved: (value) => newUser.email = value!,
             ),
+            SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  icon: Icon(Icons.map),
+                  labelText: 'Country?'),
+              items: countryes.map(
+                (String singleItem) {
+                  return DropdownMenuItem<String>(
+                    child: Text(singleItem),
+                    value: singleItem,
+                  );
+                },
+              ).toList(),
+              onChanged: (itemChosen) {
+                setState(() {
+                  this._selectedCountry = itemChosen!;
+                  newUser.country = itemChosen;
+                });
+              },
+              value: _selectedCountry,
+            ),
+
             SizedBox(height: 20),
             TextFormField(
               controller: _storyController,
@@ -123,10 +192,12 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
               inputFormatters: [
                 LengthLimitingTextInputFormatter(100),
               ],
+              onSaved: (value) => newUser.story = value!,
               // validator: ,
             ),
             SizedBox(height: 10),
             TextFormField(
+              focusNode: _passFocus,
               controller: _passwordController,
               obscureText: _hidePass,
               maxLength: 8,
@@ -180,15 +251,16 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+      _showDialog(name: _nameController.text);
       print('Form is valid');
       print('Name: ${_nameController.text}');
       print('Phone: ${_phoneController.text}');
       print('Email: ${_emailController.text}');
       print('Story: ${_storyController.text}');
+      print('Country: ${_selectedCountry.toString()}');
     } else {
-      print('form is not valid! Please review and correct');
+      _showMessage(message: 'form is not valid! Please review and correct');
     }
-
   }
 
   _validateName(value) {
@@ -225,5 +297,67 @@ class _RegisterFormPageState extends State<RegisterFormPage> {
     } else {
       return null;
     }
+  }
+
+  void _showMessage({required String message}) {
+    _scaffoldKey.currentState!.showSnackBar(
+      SnackBar(
+        duration: Duration(seconds: 5),
+        backgroundColor: Colors.red,
+        content: Text(
+          message,
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+            fontSize: 18.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDialog({required String name}) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Registration successful',
+            style: TextStyle(
+              color: Colors.green,
+            ),
+          ),
+          content: Text(
+            '$name is now a verified form',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 18.0,
+            ),
+          ),
+          actions: [
+            FlatButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => UserInfoPage(
+                      userInfo: newUser,
+                    ),
+                  ),
+                );
+              },
+              child: Text(
+                'Verified',
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: 18.0,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
